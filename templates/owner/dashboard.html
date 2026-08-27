@@ -17,7 +17,14 @@
                 <div class="space-y-3">
                     <p><span class="text-gray-500 font-medium">Name:</span> {{ restaurant.name }}</p>
                     <p><span class="text-gray-500 font-medium">Location:</span> {{ restaurant.location }}</p>
-                    <p><span class="text-gray-500 font-medium">Cuisine:</span> {{ restaurant.cuisine }}</p>
+                    <p><span class="text-gray-500 font-medium">Category:</span> {{ restaurant.category.name|default:"Not set" }}</p>
+                    <p><span class="text-gray-500 font-medium">Cuisines:</span>
+                        {% for cuisine in restaurant.cuisines.all %}
+                            {{ cuisine.name }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            Not set
+                        {% endfor %}
+                    </p>
                     <p><span class="text-gray-500 font-medium">Price Range:</span> {{ restaurant.price_range }}</p>
                     <p><span class="text-gray-500 font-medium">Description:</span> {{ restaurant.description }}</p>
                     <p><span class="text-gray-500 font-medium">Rating:</span> <span class="text-orange-600 font-bold">{{ restaurant.rating }} ★</span></p>

@@ -66,6 +66,14 @@ REST_FRAMEWORK = {
     ),
 }
 
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Extended for development
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+}
+
 CORS_ALLOW_ALL_ORIGINS = True  # For development; restrict in production
 
 AUTH_USER_MODEL = 'users.User'

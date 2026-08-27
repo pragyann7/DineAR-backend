@@ -1,13 +1,16 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Restaurant, MenuItem, Favorite
+from .models import Restaurant, MenuItem, Favorite, Cuisine, RestaurantCategory, FoodCategory
 from .serializers import (
     RestaurantSerializer,
     MenuItemSerializer,
     RestaurantListSerializer,
     RestaurantDetailSerializer,
-    FavoriteSerializer
+    FavoriteSerializer,
+    CuisineSerializer,
+    RestaurantCategorySerializer,
+    FoodCategorySerializer
 )
 from django.views.generic import CreateView, UpdateView, ListView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -15,6 +18,21 @@ from django.urls import reverse_lazy
 from .forms import RestaurantRegistrationForm, MenuItemForm
 from django.shortcuts import redirect, get_object_or_404
 from django.db.models import Q
+
+class CuisineViewSet(viewsets.ModelViewSet):
+    queryset = Cuisine.objects.all()
+    serializer_class = CuisineSerializer
+    permission_classes = [permissions.AllowAny]
+
+class RestaurantCategoryViewSet(viewsets.ModelViewSet):
+    queryset = RestaurantCategory.objects.all()
+    serializer_class = RestaurantCategorySerializer
+    permission_classes = [permissions.AllowAny]
+
+class FoodCategoryViewSet(viewsets.ModelViewSet):
+    queryset = FoodCategory.objects.all()
+    serializer_class = FoodCategorySerializer
+    permission_classes = [permissions.AllowAny]
 
 class MenuItemListView(LoginRequiredMixin, ListView):
     model = MenuItem
@@ -60,7 +78,6 @@ class RestaurantRegistrationView(LoginRequiredMixin, CreateView):
     success_url = reverse_lazy('dashboard_redirect')
 
     def form_valid(self, form):
-        # Check if user already has a restaurant
         if Restaurant.objects.filter(owner=self.request.user).exists():
             return redirect('dashboard_redirect')
 
@@ -75,7 +92,6 @@ class RestaurantUpdateView(LoginRequiredMixin, UpdateView):
     success_url = reverse_lazy('dashboard_redirect')
 
     def get_object(self, queryset=None):
-        # Automatically get the restaurant owned by the current user
         return get_object_or_404(Restaurant, owner=self.request.user)
 
     def form_valid(self, form):
@@ -99,14 +115,18 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         category = self.request.query_params.get('category')
 
         if city:
-            queryset = queryset.filter(location__city__iexact=city)
+            # Match against Area Name (e.g. Bharatpur) OR District (e.g. Chitwan)
+            queryset = queryset.filter(
+                Q(location__name__iexact=city) |
+                Q(location__city__iexact=city)
+            )
 
         if category:
-            # Flexible category match
+            # Flexible match across name, category model name, and cuisine model names
             queryset = queryset.filter(
-                Q(category__icontains=category) |
-                Q(cuisine__icontains=category)
-            )
+                Q(category__name__icontains=category) |
+                Q(cuisines__name__icontains=category)
+            ).distinct()
 
         return queryset
 
@@ -116,11 +136,15 @@ class MenuItemViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        # Customers only see available items
         queryset = MenuItem.objects.filter(is_available=True).exclude(status='REJECTED')
         restaurant_id = self.request.query_params.get('restaurant')
+        category = self.request.query_params.get('category')
+
         if restaurant_id:
             queryset = queryset.filter(restaurant_id=restaurant_id)
+        if category:
+            queryset = queryset.filter(category__name__icontains=category)
+
         return queryset
 
 class GlobalSearchView(APIView):
@@ -133,39 +157,40 @@ class GlobalSearchView(APIView):
         if not query:
             return Response({"restaurants": [], "food_items": []})
 
-        # 1. Search Restaurants (Direct match + Matching dishes)
-        restaurants_direct = Restaurant.objects.filter(status='APPROVED')
+        # 1. Search Restaurants
+        restaurants_base = Restaurant.objects.filter(status='APPROVED')
         if city:
-            restaurants_direct = restaurants_direct.filter(location__city__iexact=city)
+            restaurants_base = restaurants_base.filter(
+                Q(location__name__iexact=city) |
+                Q(location__city__iexact=city)
+            )
 
-        restaurants_by_dish = Restaurant.objects.filter(
-            status='APPROVED',
+        restaurants_by_dish = restaurants_base.filter(
             menu_items__name__icontains=query,
             menu_items__is_available=True
         ).exclude(menu_items__status='REJECTED')
 
-        if city:
-            restaurants_by_dish = restaurants_by_dish.filter(location__city__iexact=city)
-
-        restaurants = (restaurants_direct.filter(
+        restaurants = (restaurants_base.filter(
             Q(name__icontains=query) |
-            Q(cuisine__icontains=query) |
-            Q(category__icontains=query) |
+            Q(cuisines__name__icontains=query) |
+            Q(category__name__icontains=query) |
             Q(description__icontains=query)
         ) | restaurants_by_dish).distinct()
 
-        # 2. Search Menu Items (for specific food result section)
+        # 2. Search Menu Items
         food_items = MenuItem.objects.filter(is_available=True).exclude(status='REJECTED')
         if city:
-            food_items = food_items.filter(restaurant__location__city__iexact=city)
+            food_items = food_items.filter(
+                Q(restaurant__location__name__iexact=city) |
+                Q(restaurant__location__city__iexact=city)
+            )
 
         food_items = food_items.filter(
             Q(name__icontains=query) |
             Q(description__icontains=query) |
-            Q(category__icontains=query)
+            Q(category__name__icontains=query)
         ).distinct()
 
-        # Serialize results
         res_serializer = RestaurantListSerializer(restaurants, many=True, context={'request': request})
         food_serializer = MenuItemSerializer(food_items, many=True, context={'request': request})
 
@@ -184,6 +209,28 @@ class FavoriteIdsView(APIView):
         return Response({
             "restaurants": list(restaurant_ids),
             "foods": list(food_ids)
+        })
+
+class FavoriteDetailsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        # Fetch actual objects for the user's favorites
+        favorites = Favorite.objects.filter(user=user)
+
+        restaurant_ids = favorites.filter(restaurant__isnull=False).values_list('restaurant_id', flat=True)
+        food_ids = favorites.filter(menu_item__isnull=False).values_list('menu_item_id', flat=True)
+
+        restaurants = Restaurant.objects.filter(id__in=restaurant_ids, status='APPROVED')
+        foods = MenuItem.objects.filter(id__in=food_ids, is_available=True).exclude(status='REJECTED')
+
+        res_serializer = RestaurantListSerializer(restaurants, many=True, context={'request': request})
+        food_serializer = MenuItemSerializer(foods, many=True, context={'request': request})
+
+        return Response({
+            "restaurants": res_serializer.data,
+            "food_items": food_serializer.data
         })
 
 class FavoriteView(APIView):
