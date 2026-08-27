@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}Owner Dashboard | DineAR{% endblock %}
+{% block header %}{{ restaurant.name|default:"Restaurant Owner Dashboard" }}{% endblock %}
+
+{% block content %}
+{% if not restaurant %}
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-8" role="alert">
+        <p class="font-bold">Restaurant Profile Incomplete</p>
+        <p>You haven't been assigned a restaurant yet. Please contact the administrator.</p>
+    </div>
+{% else %}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="col-span-1 md:col-span-2 space-y-6">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h4 class="text-lg font-bold mb-4">Restaurant Profile</h4>
+                <div class="space-y-3">
+                    <p><span class="text-gray-500 font-medium">Name:</span> {{ restaurant.name }}</p>
+                    <p><span class="text-gray-500 font-medium">Location:</span> {{ restaurant.location }}</p>
+                    <p><span class="text-gray-500 font-medium">Cuisine:</span> {{ restaurant.cuisine }}</p>
+                    <p><span class="text-gray-500 font-medium">Price Range:</span> {{ restaurant.price_range }}</p>
+                    <p><span class="text-gray-500 font-medium">Description:</span> {{ restaurant.description }}</p>
+                    <p><span class="text-gray-500 font-medium">Rating:</span> <span class="text-orange-600 font-bold">{{ restaurant.rating }} ★</span></p>
+                </div>
+                <div class="mt-6">
+                    <a href="{% url 'restaurant_edit' %}" class="bg-dinear-orange text-white px-4 py-2 rounded hover:bg-orange-700 transition font-bold inline-block">Edit Profile</a>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                    <h4 class="text-lg font-bold">Active Menu Items</h4>
+                    <button class="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 font-bold">+ Add Item</button>
+                </div>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food Item</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AR Model</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for item in restaurant.menu_items.all %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ item.name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{{ item.price }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {% if item.model_name %}
+                                    <span class="text-green-600"><i class="fas fa-check-circle"></i> {{ item.model_name }}</span>
+                                {% else %}
+                                    <span class="text-red-500"><i class="fas fa-times-circle"></i> Missing</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <a href="#" class="text-orange-600 hover:text-orange-900 mr-3"><i class="fas fa-edit"></i></a>
+                                <a href="#" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">No menu items added.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-span-1 space-y-6">
+            <div class="bg-white rounded-lg shadow p-6 text-center">
+                {% if restaurant.image %}
+                    <img src="{{ restaurant.image.url }}" class="rounded-lg w-full mb-4 shadow-sm object-cover h-48">
+                {% else %}
+                    <div class="bg-gray-200 rounded-lg w-full h-48 mb-4 flex items-center justify-center">
+                        <i class="fas fa-image fa-3x text-gray-400"></i>
+                    </div>
+                {% endif %}
+                <p class="text-gray-500 text-sm">Public Restaurant Image</p>
+                <a href="{% url 'restaurant_edit' %}" class="mt-2 text-orange-600 font-bold hover:underline inline-block">Change Image</a>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <h4 class="text-lg font-bold mb-4">Quick Insights</h4>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">Total Items</span>
+                        <span class="font-bold">{{ restaurant.menu_items.count }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">AR Enabled</span>
+                        <span class="font-bold text-green-600">3 Items</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

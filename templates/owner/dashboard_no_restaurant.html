@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Get Started | DineAR{% endblock %}
+{% block header %}Welcome to DineAR{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden mt-8">
+    <div class="p-8 text-center">
+        <div class="mb-6">
+            <i class="fas fa-store-alt fa-4x text-dinear-orange"></i>
+        </div>
+        <h2 class="text-3xl font-bold text-gray-800 mb-4">Register Your Restaurant</h2>
+        <p class="text-gray-600 mb-8 text-lg">
+            Join the future of dining! Showcase your culinary delights in Augmented Reality and manage your menu seamlessly.
+        </p>
+
+        <div class="space-y-4 mb-8 text-left max-w-md mx-auto">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle text-green-500 mr-3"></i>
+                <span class="text-gray-700">Detailed Restaurant Profile</span>
+            </div>
+            <div class="flex items-center">
+                <i class="fas fa-check-circle text-green-500 mr-3"></i>
+                <span class="text-gray-700">AR-Enabled Digital Menu</span>
+            </div>
+            <div class="flex items-center">
+                <i class="fas fa-check-circle text-green-500 mr-3"></i>
+                <span class="text-gray-700">Real-time Availability Management</span>
+            </div>
+        </div>
+
+        <a href="{% url 'restaurant_register' %}" class="inline-block bg-dinear-orange text-white px-8 py-3 rounded-full text-lg font-bold hover:bg-orange-700 transition shadow-md">
+            Start Registration
+        </a>
+    </div>
+</div>
+{% endblock %}
